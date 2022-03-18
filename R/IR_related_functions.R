@@ -129,9 +129,11 @@ select_cols_irfinderS_output <- function(x, keep_columns = c("chr",
 
 #' Prepare a master list of introns
 #'
-#' @param x an object of class spongeAnalysis
+#' @param f a character string denoting irfinderS output file ending with suffix "IR-nondir".
 #' @param add_meta_data logical, whether to map meta data or not
 #' @param bs_genome_object an object of class BSgenome
+#' @param add_prefix_chr logical, whether to add prefix 'chr' in the column seqnames
+#' @param remove_prefix_chr logical, whether to remove prefix 'chr' from the column seqnames
 #'
 #' @return a dataframe
 #' @export
@@ -139,13 +141,19 @@ select_cols_irfinderS_output <- function(x, keep_columns = c("chr",
 #' @examples
 #' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
 #' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
-#' names(example_files) <- c("exp1" , "exp2")
-#' x <- read_irfinderS_output(files = example_files[1],  add_prefix_chr = T)
-#' get_intron_master_list(x,bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
-get_intron_master_list <- function(x, add_meta_data = T, bs_genome_object = NULL){
+#' get_intron_master_list(f = example_files[1],add_prefix_chr = TRUE,bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
+get_intron_master_list <- function(f, add_meta_data = T,
+                                   add_prefix_chr = FALSE,
+                                   remove_prefix_chr = FALSE,
+                                   bs_genome_object = NULL){
 
-  .validate_irfinders_object(x)
+
   stopifnot("'add_meta_data' must be logical." = is.logical(add_meta_data))
+
+  names(f) <- "file"
+  x <- read_irfinderS_output(files = f,
+                        add_prefix_chr = add_prefix_chr,
+                        remove_prefix_chr = remove_prefix_chr)
 
   # if x has more than one elements, select first to prepare intron list.
   # As all elements have same rows taking any one to prepare intron list is ok.

@@ -11,16 +11,34 @@ names(retained_introns_files) <- stringr::str_extract(retained_introns_files,
 
 #' Read IR-finderS output
 #'
-#' @param files a character string denoting irfinderS output file ending with *IR-nondir.
-#' @param add_prefix_chr
-#' @param remove_prefix_chr
-#' @param select_columns
-#'
+#' @param files a character vector denoting irfinderS output file(s) ending with suffix "IR-nondir".
+#' @param add_prefix_chr logical, whether to add prefix 'chr' in the column seqnames
+#' @param remove_prefix_chr logical, whether to remove prefix 'chr' from the column seqnames
+#' @param select_columns logical, whether to subset columns. If TRUE below columns will be subsetted
+#'  + chr
+#'  + start
+#'  + end
+#'  + name
+#'  + null
+#'  + strand
+#'  + coverage
+#'  + introndepth
+#'  + spliceleft
+#'  + spliceright
+#'  + spliceexact
+#'  + irratio
+#'  + warnings
 #' @return
 #' @export
 #'
 #' @examples
-read_irfinderS_output <- function(files, add_prefix_chr = TRUE, remove_prefix_chr = FALSE, select_columns = TRUE){
+#' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
+#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' names(example_files) <- c("exp1" , "exp2")
+#' read_irfinderS_output(files = example_files,  add_prefix_chr = F)
+read_irfinderS_output <- function(files,
+                                  add_prefix_chr = TRUE,
+                                  remove_prefix_chr = FALSE){
 
   # check if each values in files are named, not null or not NA.
   stopifnot("files must be named vector" = !(is.null(files) %>% all()) | !(is.na(files) %>% any()))
@@ -30,7 +48,7 @@ read_irfinderS_output <- function(files, add_prefix_chr = TRUE, remove_prefix_ch
   stopifnot("'remove_prefix_chr' must be logical" = is.logical(remove_prefix_chr))
 
 
-  retained_introns_list <- purrr::map(retained_introns_files, ~ ..1 %>%
+  retained_introns_list <- purrr::map(files, ~ ..1 %>%
 
                                         # read
                                         readr::read_delim(delim = "\t",show_col_types = FALSE) %>%
@@ -52,18 +70,38 @@ read_irfinderS_output <- function(files, add_prefix_chr = TRUE, remove_prefix_ch
   }
 
   # add class
-  class(retained_introns_list) <- c("irfinders_output", class(retained_introns_list))
-
-  # select columns
-  if(select_columns){
-    retained_introns_list <- select_cols_irfinderS_output(retained_introns_list)
-  }
+  retained_introns_list <- .assign_class_spongeAnalysis(retained_introns_list)
 
   return(retained_introns_list)
 }
 
 # select columns from irfinder-s output
-
+#' Subset columns from IRfinder-S output
+#'
+#' @param x an object of class spongeAnalysis
+#' @param keep_columns a character vector denoting column names to keep in the output dataframe
+#'  + chr
+#'  + start
+#'  + end
+#'  + name
+#'  + null
+#'  + strand
+#'  + coverage
+#'  + introndepth
+#'  + spliceleft
+#'  + spliceright
+#'  + spliceexact
+#'  + irratio
+#'  + warnings
+#' @return
+#' @export
+#'
+#' @examples
+#' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
+#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' names(example_files) <- c("exp1" , "exp2")
+#' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = F)
+#' select_cols_irfinderS_output(x)
 select_cols_irfinderS_output <- function(x, keep_columns = c("chr",
                                                              "start",
                                                              "end",
@@ -82,13 +120,28 @@ select_cols_irfinderS_output <- function(x, keep_columns = c("chr",
 
   x <- purrr::map(x , ~..1 %>% dplyr::select(keep_columns))
 
+  class(x) <- c("spongeAnalysis", class(x))
   return(x)
 
 
 }
 
 
-# get intron master list
+#' Prepare a master list of introns
+#'
+#' @param x an object of class spongeAnalysis
+#' @param add_meta_data logical, whether to map meta data or not
+#' @param bs_genome_object an object of class BSgenome
+#'
+#' @return a dataframe
+#' @export
+#'
+#' @examples
+#' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
+#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' names(example_files) <- c("exp1" , "exp2")
+#' x <- read_irfinderS_output(files = example_files[1],  add_prefix_chr = T)
+#' get_intron_master_list(x,bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
 get_intron_master_list <- function(x, add_meta_data = T, bs_genome_object = NULL){
 
   .validate_irfinders_object(x)
@@ -139,8 +192,22 @@ get_intron_master_list <- function(x, add_meta_data = T, bs_genome_object = NULL
 }
 
 
-# add intron metadata to irfinder s output
+# add intron metadata to irfinder-s output
 
+#' Map metadata irfinder-s output
+#' @description This function allows mapping DNA sequence, GC content and intron length to irfinder-s output
+#' @param x an object of class spongeAnalysis.
+#' @param bs_genome_object an object of class BSgenome
+#'
+#' @return a dataframe
+#' @export
+#'
+#' @examples
+#' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
+#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' names(example_files) <- c("exp1" , "exp2")
+#' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = T, select_columns = T)
+#' map_intron_meta_data(x = x,  bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
 map_intron_meta_data <- function(x , bs_genome_object = BSgenome.Hsapiens.UCSC.hg38){
   .validate_irfinders_object(x)
   meta_data <- get_intron_master_list(x, add_meta_data = T, bs_genome_object = bs_genome_object) %>% dplyr::select(8:dplyr::last_col())
@@ -151,6 +218,24 @@ map_intron_meta_data <- function(x , bs_genome_object = BSgenome.Hsapiens.UCSC.h
 
 # filter IR results
 
+#' Filter irfinder-s results
+#'
+#' @param x an object of class sponge analysis
+#' @param min_intron_cov a numeric value between 0 and 1, default 0.95, denoting minimum value for coverage cutoff
+#' @param min_intron_depth a numeric value, default 5, denoting average sequence depth for each intron.
+#' @param minimum_splice_exact a numeric value, default 5, denoting number of reads supporting intron splicing.
+#' @param min_irratio a numeric value, default 0.0001, denoting ir-ratio.
+#'
+#' @return an object of class spongeAnalysis
+#' @export
+#'
+#' @examples
+#' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
+#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' names(example_files) <- c("exp1" , "exp2")
+#' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = T, select_columns = T)
+#' filter_irfinderS_output(x)
+#'
 filter_irfinderS_output <- function(x , min_intron_cov = 0.95,
                                     min_intron_depth = 5,
                                     minimum_splice_exact = 5,
@@ -191,18 +276,102 @@ filter_irfinderS_output <- function(x , min_intron_cov = 0.95,
                    dplyr::filter(irratio >= min_irratio ))
   }
 
-  class(x_filt) <- class(x)
   return(x_filt)
 
 }
 
 
 
-# internals
 
+
+#' Check if the object belongs to class spongeAnalysis.
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#'
+#' @keywords internal
 .validate_irfinders_object <- function(x){
-  stopifnot("x must be an object of class irfinders_output" = is(x, "irfinders_output") )
+
+  stopifnot("x must be an object of class spongeAnalysis" = is(x, "spongeAnalysis") )
 }
+
+
+#' Assign class spongeAnalysis
+#' @description This function does all mandatory checks before it assigns class spongeAnalysis.
+#' @param x a list or dataframe to which class spongeAnalysis to assign.
+#'
+#' @return an object of class spongeAnalysis.
+#' @export
+#' @keywords internal
+.assign_class_spongeAnalysis <- function(x){
+
+  # x can be a dataframe or list of dataframes
+  # if dataframe it must have mandatory columns
+  # if a list it must have mandatory columns in each dataframe and same number of rows in each dataframe
+
+  if(is(x , "data.frame")){
+    .check_mendate_columns(x)
+    x <- list(x)
+    class(x) <- c("spongeAnalysis", class(x))
+  }
+
+  if(is(x , "list")){
+    purrr::walk(x, ~ .check_mendate_columns(..1))
+
+    # all elems of the list have same number of rows
+    x_nrows <- purrr::map_int(x, ~..1 %>% nrow())
+
+    if(!all(x_nrows==x_nrows[1])){
+      stop("All elements in x must have same number of rows.")
+    }
+
+    class(x) <- c("spongeAnalysis", class(x))
+  }
+
+  return(x)
+
+}
+
+
+#' Check mandatory columns in a dataframe
+#' @description This function helps to create mandatory column in a dataframe
+#' @param x dataframe
+#' @param mandat_columns a character vector denoting mandatory columns in x.
+#'
+#' @return TRUE or ERROR
+#' @export
+#' @keywords internal
+.check_mendate_columns <- function(x,
+                                   mandat_columns = c("chr",
+                                                      "start",
+                                                      "end",
+                                                      "name",
+                                                      "null",
+                                                      "strand",
+                                                      "coverage",
+                                                      "introndepth",
+                                                      "spliceleft",
+                                                      "spliceright",
+                                                      "spliceexact",
+                                                      "irratio",
+                                                      "warnings")){
+
+  stopifnot("x must be a dataframe" = is(x , "data.frame"))
+
+  x_cols <- colnames(x)
+
+  col_not_found <- mandat_columns[is.na(match(mandat_columns, x_cols))]
+  if(length(col_not_found) > 0){
+    stop(cli::format_error(c("x" ="Column{?s} {col_not_found} not found")))
+  }
+
+  return(TRUE)
+
+}
+
+
 
 
 

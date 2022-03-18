@@ -4,12 +4,22 @@
 \alias{get_intron_master_list}
 \title{Prepare a master list of introns}
 \usage{
-get_intron_master_list(x, add_meta_data = T, bs_genome_object = NULL)
+get_intron_master_list(
+  f,
+  add_meta_data = T,
+  add_prefix_chr = FALSE,
+  remove_prefix_chr = FALSE,
+  bs_genome_object = NULL
+)
 }
 \arguments{
-\item{x}{an object of class spongeAnalysis}
+\item{f}{a character string denoting irfinderS output file ending with suffix "IR-nondir".}
 
 \item{add_meta_data}{logical, whether to map meta data or not}
+
+\item{add_prefix_chr}{logical, whether to add prefix 'chr' in the column seqnames}
+
+\item{remove_prefix_chr}{logical, whether to remove prefix 'chr' from the column seqnames}
 
 \item{bs_genome_object}{an object of class BSgenome}
 }
@@ -22,7 +32,5 @@ Prepare a master list of introns
 \examples{
 example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
 example_files <- fs::dir_ls(example_dir, regexp = "exp*")
-names(example_files) <- c("exp1" , "exp2")
-x <- read_irfinderS_output(files = example_files[1],  add_prefix_chr = T)
-get_intron_master_list(x,bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
+get_intron_master_list(f = example_files[1],add_prefix_chr = TRUE,bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
 }

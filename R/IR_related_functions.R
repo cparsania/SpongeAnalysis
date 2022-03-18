@@ -193,10 +193,7 @@ get_intron_master_list <- function(f, add_meta_data = T,
     x <- x %>% tibble::as_tibble()
 
   }
-
-
   return(x)
-
 }
 
 

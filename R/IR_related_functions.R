@@ -293,6 +293,7 @@ mark_ir_status_by_filters <- function(x ,
   x <- purrr::map(names(introns_remained) , ~x[[..1]] %>%
                dplyr::mutate(is_retained_by_filters = intron_id %in% introns_remained[[..1]]))
 
+  names(x) <- names(x_filt)
   x <- .assign_class_spongeAnalysis(x)
 
   return(x)

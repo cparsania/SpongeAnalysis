@@ -142,7 +142,7 @@ select_cols_irfinderS_output <- function(x, keep_columns = c("chr",
 #' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
 #' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
 #' get_intron_master_list(f = example_files[1],add_prefix_chr = TRUE,bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
-get_intron_master_list <- function(f, add_meta_data = T,
+sponge_analysis_get_introns <- function(f, add_meta_data = T,
                                    add_prefix_chr = FALSE,
                                    remove_prefix_chr = FALSE,
                                    bs_genome_object = NULL){
@@ -223,7 +223,7 @@ map_intron_meta_data <- function(x , bs_genome_object = BSgenome.Hsapiens.UCSC.h
 
 # filter IR results
 
-#' Filter irfinder-s results
+#' based on each filters applied it checks whether each intron is retained or not
 #'
 #' @param x an object of class sponge analysis
 #' @param min_intron_cov a numeric value between 0 and 1, default 0.95, denoting minimum value for coverage cutoff
@@ -238,14 +238,19 @@ map_intron_meta_data <- function(x , bs_genome_object = BSgenome.Hsapiens.UCSC.h
 #' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
 #' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
 #' names(example_files) <- c("exp1" , "exp2")
-#' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = T, select_columns = T)
-#' filter_irfinderS_output(x)
+#' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = T)
+#' mark_ir_status_by_filters(x)
 #'
-filter_irfinderS_output <- function(x , min_intron_cov = 0.95,
+mark_ir_status_by_filters <- function(x ,
+                                      min_intron_cov = 0.95,
                                     min_intron_depth = 5,
                                     minimum_splice_exact = 5,
                                     min_irratio = 0.0001){
   .validate_irfinders_object(x)
+
+  # assign intron id
+
+  x <- sponge_analysis_assign_intron_identifier(x)
 
   apply_intron_coverage_cutoff = T
 
@@ -281,12 +286,44 @@ filter_irfinderS_output <- function(x , min_intron_cov = 0.95,
                    dplyr::filter(irratio >= min_irratio ))
   }
 
-  return(x_filt)
+  introns_remained <- x_filt %>% purrr::map(~..1 %>% dplyr::pull(intron_id))
+
+  # map introns_remained to original object
+
+  x <- purrr::map(names(introns_remained) , ~x[[..1]] %>%
+               dplyr::mutate(is_retained_by_filters = intron_id %in% introns_remained[[..1]]))
+
+  x <- .assign_class_spongeAnalysis(x)
+
+  return(x)
 
 }
 
 
+# identifier adfdf
 
+#' For each intron in the object spongeAnalysis assign unique intron id
+#'
+#' @param x an object of class spongeAnalysis.
+#'
+#' @return an object of class spongeAnalysis.
+#' @export
+#'
+#' @examples
+#'
+#' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
+#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' names(example_files) <- c("exp1" , "exp2")
+#' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = F)
+#' sponge_analysis_assign_intron_identifier(x)
+sponge_analysis_assign_intron_identifier  <- function(x){
+  # assign intron id to each element in the x
+
+  .validate_irfinders_object(x)
+  x <- purrr::map(x  , ~ ..1 %>% dplyr::mutate(intron_id = stringr::str_c("intron", 1:dplyr::n(), sep = "_")))
+  x <- .assign_class_spongeAnalysis(x)
+  return(x)
+}
 
 
 #' Check if the object belongs to class spongeAnalysis.

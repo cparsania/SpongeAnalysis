@@ -26,9 +26,15 @@
 #' peak_file <- system.file("extdata", "boudreau_et_al_clipseq_peaks.bed", package = "SpongeAnalysis")
 #' peak_data <- readr::read_delim(peak_file,delim = "\t")
 #' peak_data_gr <- peak_data %>% plyranges::as_granges()
-#' clipseq_annotate_peaks(peak_data_gr)
 #'
-clipseq_annotate_peaks <- function(x, ref_cds_regions , ref_utr3_regions, ref_utr5_regions, ref_intron_regions.){
+#' intron_bed_file <- system.file("annot_grch38_genecode_v36", "grch38_genecode_v36_introns.bed", package = "SpongeAnalysis")
+#' utr3_bed_file <- system.file("annot_grch38_genecode_v36", "grch38_genecode_v36_3UTR.bed", package = "SpongeAnalysis")
+#' utr5_bed_file <- system.file("annot_grch38_genecode_v36", "grch38_genecode_v36_5UTR.bed", package = "SpongeAnalysis")
+#' cds_bed_file <- system.file("annot_grch38_genecode_v36", "grch38_genecode_v36_coding_exons.bed", package = "SpongeAnalysis")
+#'
+#' clipseq_annotate_peaks(x = peak_data_gr,coding_exon_file = cds_bed_file , utr3_file = utr3_bed_file, utr5_file = utr5_bed_file, intron_file = intron_bed_file)
+#'
+clipseq_annotate_peaks <- function(x, coding_exon_file , utr3_file, utr5_file, intron_file){
 
   # validate x class
   stopifnot("x must be the object of class 'GRanges' " = is(x , "GRanges"))
@@ -44,10 +50,10 @@ clipseq_annotate_peaks <- function(x, ref_cds_regions , ref_utr3_regions, ref_ut
   x <- x %>% dplyr::select(peak_id)
 
   # prepare reference regions
-  ucsc_introns <- .get_ucsc_introns_annotated()
-  ucsc_coding_exon <- .get_ucsc_coding_exon()
-  ucsc_utr5 <- .get_ucsc_utr5()
-  ucsc_utr3 <- .get_ucsc_utr3()
+  ucsc_introns <- .annotate_introns(intron_file = intron_file,utr3_file = utr3_file, utr5_file = utr5_file,coding_exon_file = cds_bed_file)
+  ucsc_coding_exon <- .get_ucsc_coding_exon(coding_exon_file = coding_exon_file)
+  ucsc_utr5 <- .get_ucsc_utr5(utr5_file = utr5_file)
+  ucsc_utr3 <- .get_ucsc_utr3(utr3_file = utr3_file)
 
   # combine them in a single object
   comb_annot <-  plyranges::bind_ranges(ucsc_introns,ucsc_coding_exon,ucsc_utr5, ucsc_utr3) %>% plyranges::as_granges()
@@ -81,9 +87,6 @@ clipseq_annotate_peaks <- function(x, ref_cds_regions , ref_utr3_regions, ref_ut
   x <- x %>% tibble::as_tibble() %>% dplyr::left_join(peak_loc) %>% plyranges::as_granges()
   return(x)
 }
-
-
-
 
 
 

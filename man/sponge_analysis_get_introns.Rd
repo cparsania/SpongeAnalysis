@@ -31,6 +31,6 @@ Prepare a master list of introns
 }
 \examples{
 example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
-example_files <- fs::dir_ls(example_dir, regexp = "exp*")
-get_intron_master_list(f = example_files[1],add_prefix_chr = TRUE,bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
+example_files <- fs::dir_ls(example_dir, glob = "*IRFinder-IR-nondir*.txt")
+sponge_analysis_get_introns(f = example_files[1],add_prefix_chr = TRUE,bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
 }

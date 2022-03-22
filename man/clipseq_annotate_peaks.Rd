@@ -4,13 +4,7 @@
 \alias{clipseq_annotate_peaks}
 \title{Annotate clipseq peaks}
 \usage{
-clipseq_annotate_peaks(
-  x,
-  ref_cds_regions,
-  ref_utr3_regions,
-  ref_utr5_regions,
-  ref_intron_regions.
-)
+clipseq_annotate_peaks(x, coding_exon_file, utr3_file, utr5_file, intron_file)
 }
 \arguments{
 \item{x}{an object of class GRanges where each row denotes clipseq peaks. Object must have column 'peak_id'.}
@@ -26,6 +20,12 @@ Annotate clipseq peaks
 peak_file <- system.file("extdata", "boudreau_et_al_clipseq_peaks.bed", package = "SpongeAnalysis")
 peak_data <- readr::read_delim(peak_file,delim = "\t")
 peak_data_gr <- peak_data \%>\% plyranges::as_granges()
-clipseq_annotate_peaks(peak_data_gr)
+
+intron_bed_file <- system.file("annot_grch38_genecode_v36", "grch38_genecode_v36_introns.bed", package = "SpongeAnalysis")
+utr3_bed_file <- system.file("annot_grch38_genecode_v36", "grch38_genecode_v36_3UTR.bed", package = "SpongeAnalysis")
+utr5_bed_file <- system.file("annot_grch38_genecode_v36", "grch38_genecode_v36_5UTR.bed", package = "SpongeAnalysis")
+cds_bed_file <- system.file("annot_grch38_genecode_v36", "grch38_genecode_v36_coding_exons.bed", package = "SpongeAnalysis")
+
+clipseq_annotate_peaks(x = peak_data_gr,coding_exon_file = cds_bed_file , utr3_file = utr3_bed_file, utr5_file = utr5_bed_file, intron_file = intron_bed_file)
 
 }

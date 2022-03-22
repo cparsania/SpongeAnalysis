@@ -31,7 +31,7 @@ based on each filters applied it checks whether each intron is retained or not
 }
 \examples{
 example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
-example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+example_files <- fs::dir_ls(example_dir, glob = "*IRFinder-IR-nondir*.txt")
 names(example_files) <- c("exp1" , "exp2")
 x <- read_irfinderS_output(files = example_files,  add_prefix_chr = T)
 mark_ir_status_by_filters(x)

@@ -33,7 +33,7 @@ names(retained_introns_files) <- stringr::str_extract(retained_introns_files,
 #'
 #' @examples
 #' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
-#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' example_files <- fs::dir_ls(example_dir, glob = "*IRFinder-IR-nondir*.txt")
 #' names(example_files) <- c("exp1" , "exp2")
 #' read_irfinderS_output(files = example_files,  add_prefix_chr = F)
 read_irfinderS_output <- function(files,
@@ -98,7 +98,7 @@ read_irfinderS_output <- function(files,
 #'
 #' @examples
 #' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
-#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' example_files <- fs::dir_ls(example_dir, glob = "*IRFinder-IR-nondir*.txt")
 #' names(example_files) <- c("exp1" , "exp2")
 #' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = F)
 #' select_cols_irfinderS_output(x)
@@ -140,9 +140,10 @@ select_cols_irfinderS_output <- function(x, keep_columns = c("chr",
 #'
 #' @examples
 #' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
-#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
-#' get_intron_master_list(f = example_files[1],add_prefix_chr = TRUE,bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
-sponge_analysis_get_introns <- function(f, add_meta_data = T,
+#' example_files <- fs::dir_ls(example_dir, glob = "*IRFinder-IR-nondir*.txt")
+#' sponge_analysis_get_introns(f = example_files[1],add_prefix_chr = TRUE,bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
+sponge_analysis_get_introns <- function(f,
+                                        add_meta_data = T,
                                    add_prefix_chr = FALSE,
                                    remove_prefix_chr = FALSE,
                                    bs_genome_object = NULL){
@@ -150,7 +151,7 @@ sponge_analysis_get_introns <- function(f, add_meta_data = T,
 
   stopifnot("'add_meta_data' must be logical." = is.logical(add_meta_data))
 
-  names(f) <- "file"
+  names(f) <- stringr::str_c("file", length(f), sep = "_")
   x <- read_irfinderS_output(files = f,
                         add_prefix_chr = add_prefix_chr,
                         remove_prefix_chr = remove_prefix_chr)
@@ -173,26 +174,16 @@ sponge_analysis_get_introns <- function(f, add_meta_data = T,
     # prepare intron id
     dplyr::mutate(intron_id = stringr::str_c("intron_",dplyr::row_number()))
 
-  # add meta data
   if(add_meta_data){
-    stopifnot("when add_meta_data = T, bs_genome_object must be an object of class BSgenome" = is(bs_genome_object, "BSgenome"))
-
-    x <- x %>% dplyr::rename("seqnames" = "chr")  %>% plyranges::as_granges()
-
-    x <- x %>%
-      # add sequence for each intron
-      dplyr::mutate(seq =  BSgenome::getSeq(bs_genome_object,x)) %>%
-
-      # add GC for each intron
-      dplyr::mutate(GC =  BSgenome::letterFrequency(seq, letters = "GC", as.prob = T) %>%  as.numeric()) %>%
-
-      # add length for each intron
-      dplyr::mutate(length =  BSgenome::width(seq))
-
-    # convert back into tibble
+    stopifnot("if add_meta_data is TRUE, bs_genome_object must be an object of class BSgenome" = is(bs_genome_object, "BSgenome"))
+    colnames(x)[1] <- "seqnames"
+    x <- x %>% plyranges::as_granges()
+    x <- .map_granges_metadata(x = x, bs_genome_object = bs_genome_object)
     x <- x %>% tibble::as_tibble()
+    colnames(x)[1] <- "chr"
 
   }
+
   return(x)
 }
 
@@ -201,6 +192,7 @@ sponge_analysis_get_introns <- function(f, add_meta_data = T,
 
 #' Map metadata irfinder-s output
 #' @description This function allows mapping DNA sequence, GC content and intron length to irfinder-s output
+#'
 #' @param x an object of class spongeAnalysis.
 #' @param bs_genome_object an object of class BSgenome
 #'
@@ -209,16 +201,64 @@ sponge_analysis_get_introns <- function(f, add_meta_data = T,
 #'
 #' @examples
 #' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
-#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' example_files <- fs::dir_ls(example_dir, glob = "*IRFinder-IR-nondir*.txt")
 #' names(example_files) <- c("exp1" , "exp2")
-#' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = T, select_columns = T)
+#' x <- read_irfinderS_output(files = example_files[1],  add_prefix_chr = T)
 #' map_intron_meta_data(x = x,  bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
 map_intron_meta_data <- function(x , bs_genome_object = BSgenome.Hsapiens.UCSC.hg38){
   .validate_irfinders_object(x)
-  meta_data <- get_intron_master_list(x, add_meta_data = T, bs_genome_object = bs_genome_object) %>% dplyr::select(8:dplyr::last_col())
-  x_mapped <- purrr::map(x, ~ ..1 %>% dplyr::bind_cols(meta_data))
-  class(x_mapped) <- class(x)
-  return(x_mapped)
+
+  stopifnot("bs_genome_object must be an object of class BSgenome" = is(bs_genome_object, "BSgenome"))
+
+  #change name 'chr' to seqnames
+  x <- purrr::map(x , function(x){
+    colnames(x)[1] <- "seqnames"
+
+    return(x)
+  })
+
+  # convert granges
+  x <- purrr::map(x, ~ ..1 %>% plyranges::as_granges() )
+
+  x_mapped <- purrr::map(x, ~ ..1 %>% .map_granges_metadata(bs_genome_object = bs_genome_object))
+
+  x_mapped <- x_mapped %>% purrr::map(~..1 %>% tibble::as_tibble())
+
+  # change column 'chr' to seqnames
+
+  x_mapped <- purrr::map(x_mapped , function(x){
+    colnames(x)[1] <- "chr"
+    return(x)
+  })
+   x <- .assign_class_spongeAnalysis(x_mapped)
+  return(x)
+}
+
+#' map metadata (GC, length and seq) to the GRanges object
+#'
+#' @param x an object of class GRanges
+#' @param bs_genome_object an object of class BSgenome
+#'
+#' @return
+#' @export
+#'
+#' @keywords internal
+.map_granges_metadata <- function(x, bs_genome_object = BSgenome.Hsapiens.UCSC.hg38){
+
+  stopifnot("x must be the object of class GRanges" = is(x, "GRanges"))
+  stopifnot("bs_genome_object must be an object of class BSgenome" = is(bs_genome_object, "BSgenome"))
+
+  x <- x %>%
+    # add sequence for each intron
+    dplyr::mutate(seq =  BSgenome::getSeq(bs_genome_object,x)) %>%
+
+    # add GC for each intron
+    dplyr::mutate(GC =  BSgenome::letterFrequency(seq, letters = "GC", as.prob = T) %>%  as.numeric()) %>%
+
+    # add length for each intron
+    dplyr::mutate(length =  BSgenome::width(seq))
+
+  return(x)
 }
 
 # filter IR results
@@ -236,7 +276,7 @@ map_intron_meta_data <- function(x , bs_genome_object = BSgenome.Hsapiens.UCSC.h
 #'
 #' @examples
 #' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
-#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' example_files <- fs::dir_ls(example_dir, glob = "*IRFinder-IR-nondir*.txt")
 #' names(example_files) <- c("exp1" , "exp2")
 #' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = T)
 #' mark_ir_status_by_filters(x)
@@ -313,7 +353,7 @@ mark_ir_status_by_filters <- function(x ,
 #' @examples
 #'
 #' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
-#' example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+#' example_files <- fs::dir_ls(example_dir, glob = "*IRFinder-IR-nondir*.txt")
 #' names(example_files) <- c("exp1" , "exp2")
 #' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = F)
 #' sponge_analysis_assign_intron_identifier(x)

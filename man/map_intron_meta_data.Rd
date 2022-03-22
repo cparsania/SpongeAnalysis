@@ -19,8 +19,8 @@ This function allows mapping DNA sequence, GC content and intron length to irfin
 }
 \examples{
 example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
-example_files <- fs::dir_ls(example_dir, regexp = "exp*")
+example_files <- fs::dir_ls(example_dir, glob = "*IRFinder-IR-nondir*.txt")
 names(example_files) <- c("exp1" , "exp2")
-x <- read_irfinderS_output(files = example_files,  add_prefix_chr = T, select_columns = T)
+x <- read_irfinderS_output(files = example_files[1],  add_prefix_chr = T)
 map_intron_meta_data(x = x,  bs_genome_object = BSgenome.Hsapiens.UCSC.hg38::BSgenome.Hsapiens.UCSC.hg38)
 }

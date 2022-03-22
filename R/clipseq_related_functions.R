@@ -50,7 +50,8 @@ clipseq_annotate_peaks <- function(x, coding_exon_file , utr3_file, utr5_file, i
   x <- x %>% dplyr::select(peak_id)
 
   # prepare reference regions
-  ucsc_introns <- .annotate_introns(intron_file = intron_file,utr3_file = utr3_file, utr5_file = utr5_file,coding_exon_file = cds_bed_file)
+  ucsc_introns <- .annotate_introns(intron_file = intron_file,utr3_file = utr3_file, utr5_file = utr5_file,
+                                    coding_exon_file = coding_exon_file)
   ucsc_coding_exon <- .get_ucsc_coding_exon(coding_exon_file = coding_exon_file)
   ucsc_utr5 <- .get_ucsc_utr5(utr5_file = utr5_file)
   ucsc_utr3 <- .get_ucsc_utr3(utr3_file = utr3_file)

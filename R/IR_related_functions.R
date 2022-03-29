@@ -455,6 +455,41 @@ sponge_analysis_assign_intron_identifier  <- function(x){
 }
 
 
+#' Prepare a intron reads count matrix.
+#' @description Intron counts will be obtained from the column 'introndepth' of the IRFinder-S output.
+#' @param x an object of class SpongeAnalysis.
+#'
+#' @return a tbl.
+#' @export
+#'
+#' @examples
+#'
+#' example_dir <- "~/Documents/Projects/15_SpongeAnalysisRpkg/SpongeAnalysis/inst/extdata"
+#' example_files <- fs::dir_ls(example_dir, glob = "*IRFinder-IR-nondir*.txt")
+#' names(example_files) <- c("exp1" , "exp2")
+#' x <- read_irfinderS_output(files = example_files,  add_prefix_chr = F)
+#' get_ir_counts(x)
+#'
+#'
+get_ir_counts <- function(x){
+
+  .validate_irfinders_object(x)
+
+y <- x %>%
+  sponge_analysis_assign_intron_identifier() %>%
+  purrr::map(~ ..1 %>% dplyr::select(intron_id, "introndepth")) %>%
+  tibble::enframe() %>% tidyr::unnest(cols = c(value)) %>%
+  tidyr::pivot_wider(names_from = "name", values_from = "introndepth")
+
+return(y)
+
+}
+
+
+
+
+
+
 
 
 
